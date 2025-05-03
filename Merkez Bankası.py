@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split
@@ -10,113 +9,93 @@ from sklearn.feature_selection import f_regression
 
 # TCMB EVDS API KEY
 from evds import evdsAPI
-api_key = input("Lütfen EVDS API anahtarınızı girin: ")  # Kullanıcıdan API anahtarını alıyoruz
+api_key = input("Lütfen EVDS API anahtarınızı girin: ")
 evds = evdsAPI(api_key)
 
-
-# DATA
+# Veri setini çekiyoruz
 data_series = ['TP.METALIHR.G71', 'TP.METALITH.G71', 'TP_GSYIH26_GY_CF', 'TP_REESAVANS_AFO', 'TP.DK.USD.A.YTL']
-start_date = "01-01-2020"
-end_date = "06-09-2022"
+start_date = "01-01-2024"
+end_date = "01-01-2025"
 df = evds.get_data(data_series, startdate=start_date, enddate=end_date, frequency=5)
 
-# İhracat ve İthalat Farkı 
+# İhracat - İthalat farkı hesapla
 df['ITH_IHR_Farki'] = abs(df['TP_METALIHR_G71'] - df['TP_METALITH_G71'])
 
-# Değişkenler
+# Değişkenleri tanımla
 variables = {
     'X1': 'ITH_IHR_Farki',
     'X2': 'TP_REESAVANS_AFO',
     'X3': 'TP_GSYIH26_GY_CF',
     'Y': 'TP_DK_USD_A_YTL'
 }
+
 X = df[[variables['X1'], variables['X2'], variables['X3']]].values
 Y = df[variables['Y']].values
 
-# IMPUTATION
+# Eksik veri doldurma
 imputer = SimpleImputer(strategy='mean')
 X = imputer.fit_transform(X)
 Y = imputer.fit_transform(Y.reshape(-1, 1)).ravel()
 
-# TEST ve EĞİTİM
+# Veri setini eğitim/test olarak böl
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
-# Polinom
-poly = PolynomialFeatures(degree=2)
-X_train_poly = poly.fit_transform(X_train)
-X_test_poly = poly.transform(X_test)
-
-# Model Eğitme
+# Lineer regresyon modeli oluştur ve eğit
 model = LinearRegression()
-model.fit(X_train_poly, y_train)
+model.fit(X_train, y_train)
 
-# Tahminlerde Bulunma
-y_train_pred = model.predict(X_train_poly)
-y_test_pred = model.predict(X_test_poly)
+# Tahminler
+y_train_pred = model.predict(X_train)
+y_test_pred = model.predict(X_test)
 
-# Performans Değerlendirmesi
+# Performans değerlendirme
 r2_train = r2_score(y_train, y_train_pred)
 r2_test = r2_score(y_test, y_test_pred)
-print("Eğitim Verisi R-Kare:", r2_train)
-print("Test Verisi R-Kare:", r2_test)
+print("Eğitim Verisi R-Kare:", round(r2_train, 3))
+print("Test Verisi R-Kare:", round(r2_test, 3))
 
-# Düzeltilmiş R-Kare Hesaplama
-n = X_test_poly.shape[0]
-p = X_test_poly.shape[1] - 1
+# Düzeltilmiş R-Kare (Test Verisi)
+n = X_test.shape[0]
+p = X_test.shape[1]
 adjusted_r2 = 1 - (1 - r2_test) * (n - 1) / (n - p - 1)
-print("Düzeltilmiş R-Kare (Test Verisi):", adjusted_r2)
+print("Düzeltilmiş R-Kare (Test Verisi):", round(adjusted_r2, 3))
 
-# P- Value
-f_vals, p_vals = f_regression(X_train_poly, y_train)
-print("F Değerleri:", f_vals)
-print("P Değerleri:", p_vals)
+# F ve P değerleri
+f_vals, p_vals = f_regression(X_train, y_train)
 
-# Katsayılar
-intercept = model.intercept_
+# Katsayılar ve özet tablo
 coefficients = model.coef_
-print("Intercept:", intercept)
-print("Coefficients:", coefficients)
+intercept = model.intercept_
 
-# Özet 
-features = poly.get_feature_names_out()
 summary = pd.DataFrame({
-    'Özellikler': features,
+    'Özellikler': [variables['X1'], variables['X2'], variables['X3']],
     'Katsayılar': coefficients,
     'F Değerleri': f_vals,
     'P Değerleri': p_vals
 })
+
+print("Intercept:", intercept)
 print(summary)
 
-# Grafikleri Oluşturma
+# Görselleştirme: Her bir X değişkeni ile Y arasındaki ilişki
 plt.figure(figsize=(12, 6))
 
-plt.subplot(1, 3, 1)
-plt.scatter(df[variables['X1']], df[variables['Y']], color='blue')
-plt.xlabel('İhracat-İthalat Farkı')
-plt.ylabel('TCMB Dolar Alış Kuru')
-
-plt.subplot(1, 3, 2)
-plt.scatter(df[variables['X2']], df[variables['Y']], color='green')
-plt.xlabel('Reeskont ve Avans Faiz Oranı')
-plt.ylabel('TCMB Dolar Alış Kuru')
-
-plt.subplot(1, 3, 3)
-plt.scatter(df[variables['X3']], df[variables['Y']], color='red')
-plt.xlabel('GSYİH')
-plt.ylabel('TCMB Dolar Alış Kuru')
+for i, var in enumerate([variables['X1'], variables['X2'], variables['X3']]):
+    plt.subplot(1, 3, i+1)
+    plt.scatter(df[var], df[variables['Y']], color='blue')
+    plt.xlabel(var)
+    plt.ylabel('TCMB Dolar Alış Kuru')
 
 plt.tight_layout()
 plt.show()
 
-#  Görselleştirme
-plt.figure(figsize=(10, 6))
+# Gerçek vs Tahmin
+plt.figure(figsize=(8, 6))
 plt.scatter(y_train, y_train_pred, color='orange', label='Eğitim Verisi')
 plt.scatter(y_test, y_test_pred, color='purple', label='Test Verisi')
-plt.plot([min(y_train), max(y_train)], [min(y_train), max(y_train)], color='blue', lw=2)
-plt.title('2. Dereceden Çoklu Polinom Regresyon Analizi')
+plt.plot([min(Y), max(Y)], [min(Y), max(Y)], color='blue', lw=2)
+plt.title('Lineer Regresyon: Gerçek vs Tahmin')
 plt.xlabel('Gerçek Değerler')
 plt.ylabel('Tahmin Değerleri')
 plt.legend()
 plt.show()
-
-
