@@ -1,4 +1,4 @@
-# Döviz Kuru Tahminleme Projesi
+# TCMB Döviz Kuru Tahminleme Projesi
 
 Bu proje, Türkiye Cumhuriyet Merkez Bankası (TCMB) döviz kuru tahminleme amacıyla çeşitli ekonomik göstergeleri kullanarak USD/TRY kuru üzerine tahminler yapmayı hedeflemektedir. Projede lineer regresyon modeli kullanılmakta, verilerin temizlenmesi, özellik mühendisliği ve model değerlendirmesi adımları uygulanmaktadır.
 
