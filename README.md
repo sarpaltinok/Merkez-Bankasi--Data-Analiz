@@ -87,4 +87,3 @@ Bu proje, TCMB verilerini kullanarak ABD Doları alış kurunu etkileyen bazı e
 
 ---
 
-Bu projeyi geliştirmek için verileri artırabilir, farklı modelleme teknikleri deneyebilir ve daha fazla bağımsız değişken ekleyebilirsiniz.
